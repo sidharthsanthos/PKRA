@@ -1,0 +1,76 @@
+import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../Config';
+
+const SMain = () => {
+
+  const [members, setMembers] = useState([]);
+
+  const fetchHouses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('Members')
+        .select('*');
+
+      if (error) {
+        console.error('Error Fetching Rows', error.message);
+        return;
+      }
+
+      setMembers(data);
+    } catch (err) {
+      console.error('Unexpected Error Occured', err);
+    }
+  }
+
+  useEffect(() => {
+    fetchHouses();
+  }, []);
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      {members.map((member) => (
+        <View key={member.HouseNumber} style={styles.memberContainer}>
+          <Text style={styles.houseNumber}>{member.HouseNumber}</Text>
+          <Text style={styles.memberName}>{member.Name}</Text>
+          <Text style={styles.memberDivision}>{member.Division}</Text>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+export default SMain;
+
+const styles = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    padding: 16,
+    backgroundColor: '#f9f9f9',
+  },
+  memberContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 3, // Android shadow
+    shadowColor: '#000', // iOS shadow
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  houseNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  memberName: {
+    fontSize: 16,
+    marginVertical: 4,
+    color: '#555',
+  },
+  memberDivision: {
+    fontSize: 14,
+    color: '#777',
+  },
+});
