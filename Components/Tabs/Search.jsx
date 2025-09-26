@@ -1,4 +1,3 @@
-import { StyleSheet, Text, View } from 'react-native';
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import SMain from '../Search/SMain';
@@ -18,5 +17,3 @@ const Search = () => {
 }
 
 export default Search
-
-const styles = StyleSheet.create({})

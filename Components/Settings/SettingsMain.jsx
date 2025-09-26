@@ -1,42 +1,17 @@
 import { StyleSheet, Text, View, TouchableOpacity, Switch, ScrollView } from 'react-native';
-import React, { useState } from 'react';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SettingsMain = () => {
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(true);
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Settings</Text>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
 
-      {/* Section 1 */}
-      <View style={styles.section}>
-        <TouchableOpacity style={styles.item}>
-          <Text style={styles.itemText}>Profile</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.item}>
-          <Text style={styles.itemText}>Change Password</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Section 2 */}
-      <View style={styles.section}>
-        <View style={styles.itemRow}>
-          <Text style={styles.itemText}>Enable Notifications</Text>
-          <Switch
-            value={isNotificationsEnabled}
-            onValueChange={setIsNotificationsEnabled}
-          />
-        </View>
-      </View>
-
-      {/* Section 3 */}
-      <View style={styles.section}>
-        <TouchableOpacity style={styles.item}>
-          <Text style={[styles.itemText, { color: 'red' }]}>Log Out</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 };
 
