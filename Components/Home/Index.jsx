@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import { supabase } from '../Config';
@@ -31,7 +32,7 @@ const HomeContainer = () => {
   const [currentSetting, setCurrentSetting] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       const { data } = await supabase
         .from('Association_Settings')
@@ -47,7 +48,7 @@ const HomeContainer = () => {
     } catch (error) {
       console.error('Error Fetching Settings', error.message);
     }
-  };
+  }, []);
 
   const fetchStats = async () => {
     if (!currentSetting) return;
@@ -63,7 +64,7 @@ const HomeContainer = () => {
 
       const { data: payments, error: paymentsError } = await supabase
       .from('Payments')
-      .select('Amount_Paid ,Mode ,HouseNumber')
+      .select('Amount_Paid, Mode, HouseNumber') 
       .eq('AssociationId', settingId);
       
       if (paymentsError) throw paymentsError;
@@ -102,12 +103,16 @@ const HomeContainer = () => {
     }
   };
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchSettings();
+    }, [fetchSettings]) 
+  );
 
   useEffect(() => {
-    fetchStats();
+    if (currentSetting) {
+      fetchStats();
+    }
   }, [currentSetting]);
 
   const progress = stats && (stats.amountReceived + stats.amountPending) > 0 ? (stats.amountReceived / (stats.amountReceived + stats.amountPending)) * 100 : 0;
