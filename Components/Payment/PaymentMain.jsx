@@ -1,16 +1,18 @@
 import { Alert,ActivityIndicator, StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useState, useEffect, useRef} from 'react';
 import {Picker} from '@react-native-picker/picker';
 import { supabase } from '../Config';
 
 const PaymentMain = () => {
+  const [settingId, setSettingId] = useState(null);
   const [selectedDivision, setSelectedDivision ] = useState('');
   const [ houses, setHouses] = useState([]);
   const [selectedHouse, setSelectedHouse] = useState('');
   const [mode, setMode] = useState('');
   const [amount, setAmount] = useState(0);
-  const [receiptNumber, setReceiptNumber] = useState();
+  const [receiptNumber, setReceiptNumber] = useState(0);
   const [loading, setLoading] = useState(false);
   const divisionRef = useRef();
   const houseRef = useRef();
@@ -23,9 +25,10 @@ const PaymentMain = () => {
     setSelectedHouse('');
     setAmount(0);
     setMode('');
-    setReceiptNumber('');
+    setReceiptNumber(0);
     setHouses([]);
   }
+
    const fetchHouses = async () => {
     setLoading(true);
     try {
@@ -66,23 +69,44 @@ const PaymentMain = () => {
   const addPayment = async() => {
     setLoading(true);
     try {
-      await supabase
-      .from('Payments')
-      .insert({
-        'HouseNumber': selectedHouse.HouseNumber,
-        'Amount_Paid': amount,
-        'Mode_of_Payment': mode,
-        'Receipt_Number': receiptNumber 
-      })
+      const { data, error } = await supabase
+        .from('Payments')
+        .insert({
+          'AssociationId': settingId,
+          'HouseNumber': selectedHouse.HouseNumber,
+          'Amount_Paid': amount,
+          'Mode': mode,
+          'ReceiptNumber': receiptNumber
+        })
+        .select('id')
+        .single();
 
-      Alert.alert('Payment Added Successfully');
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        Alert.alert('Success', 'Payment Added Successfully');
+        clearForm();
+      } else {
+        Alert.alert('Error', 'Payment could not be added. Please try again.');
+      }
+
     } catch (error) {
+      Alert.alert('Error Adding Payment', error.message);
       console.error('Error Adding Payment', error.message);
     } finally {
       setLoading(false);
-      clearForm();
     }
   }
+
+  useEffect(() => {
+    const fetchAssociationId = async () => {
+      const associationId = await AsyncStorage.getItem('settingId');
+      setSettingId(associationId);
+    }
+    fetchAssociationId();
+  },[])
 
   useEffect(() => {
     setHouses([]);
@@ -195,8 +219,8 @@ const PaymentMain = () => {
             <Text style={styles.label}>Receipt Number</Text>
             <TextInput
               style={styles.input}
-              onChangeText={amount => setReceiptNumber(Number(amount))}
-              value={receiptNumber}
+              onChangeText={text => setReceiptNumber(Number(text))}
+              value={receiptNumber ? String(receiptNumber) : ''}
               placeholder='Receipt Number'
               keyboardType='numeric'
             />
