@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Picker} from '@react-native-picker/picker';
 import { useState, useEffect, useRef } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -19,13 +20,16 @@ const SettingsMain = () => {
   const createSetting = async () => {
     setLoading(true);
     try {
-      await supabase
+      const { data } = await supabase
       .from('Association_Settings')
       .insert({
         Year: currentCycle,
         Annual_Fee: newSetting.Annual_Fee,
         Due_date: newSetting.Due_date,
       })
+      .select('id')
+
+      await AsyncStorage.setItem('settingId',JSON.stringify(data[0]))
       fetchSettings();
     } catch (error) {
       console.error('Error Creating Setting', error.message);
@@ -87,7 +91,7 @@ const SettingsMain = () => {
     }
   }, [currentSetting]);
 
-  const handleDateChange = (selectedDate) => {
+  const handleDateChange = (event, selectedDate) => {
     const currentDate = selectedDate || newSetting.Due_date;
     setShowDatePicker(false);
     setNewSetting({ ...newSetting, Due_date: currentDate });
@@ -114,7 +118,7 @@ const SettingsMain = () => {
                     setCurrentSetting(selected);
                   }}
                   style={styles.picker}
-                >  
+                >   
                   {settings.map((setting) => (
                     <Picker.Item 
                       key={setting.id}
