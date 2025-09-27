@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import SMain from '../Search/SMain';
 import MemberDetails from '../Search/MemberDetails';
 import PaymentScreen from '../Search/PaymentScreen';
+import PaymentsHistory from '../Search/PaymentsHistory';
 
 const Stack=createStackNavigator();
 
@@ -13,6 +14,7 @@ const Search = () => {
         <Stack.Screen name='SearchMain' component={SMain}/>
         <Stack.Screen name='MemberDetails' component={MemberDetails}/>
         <Stack.Screen name='PaymentScreen' component={PaymentScreen}/>
+        <Stack.Screen name='PaymentHistory' component={PaymentsHistory}/>
     </Stack.Navigator>
   )
 }
