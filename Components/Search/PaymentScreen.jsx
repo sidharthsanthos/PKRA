@@ -1,181 +1,145 @@
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  Platform, 
-  StatusBar, 
-  TextInput, 
-  Alert, 
+import {
+  StyleSheet,
+  Text,
+  View,
+  Platform,
+  StatusBar,
+  TextInput,
+  Alert,
   ScrollView,
-  Dimensions 
-} from 'react-native'
-import React, { useEffect, useState } from 'react'
+  Dimensions
+} from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../Config';
 import { TouchableOpacity } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import Icon from 'react-native-vector-icons/MaterialIcons'; // You'll need to install this
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
-const PaymentScreen = ({route}) => {
-  const houseNo = route.params.houseNo;
-  const [payments, setPayments] = useState([]);
-  const [amt, setAmt] = useState(0);
+const PaymentScreen = ({ route, navigation }) => {
+  const { houseNo } = route.params;
+  const [settingsId, setSettingsId] = useState(null);
+  const [payments, setPayments] = useState(null);
+  const [annualFee, setAnnualFee] = useState(0);
+  const [amountToPay, setAmountToPay] = useState(0);
   const [paymentMode, setPaymentMode] = useState('Cash');
-  const [receiptNo, setReceiptNo] = useState(null);
+  const [receiptNo, setReceiptNo] = useState(0);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const fetchPaymentDetails = async () => {
+  const fetchPaymentDetails = useCallback(async () => {
+    if (!settingsId) return;
+    setLoading(true);
     try {
-      const {data, error} = await supabase
+      const { data, error } = await supabase
         .from('House_Payment_Status')
         .select('*,Members(*)')
-        .eq('HouseNumber', houseNo);
+        .eq('HouseNumber', houseNo)
+        .eq('AssociationId', settingsId)
+        .single();
 
-      if (error) {
-        console.error('Fetching Error Occurred', error.message);
-        return;
-      }
-
-      console.log(data);
-      setPayments(data[0])
-      
+      if (error) throw error;
+      setPayments(data);
     } catch (err) {
-      console.error('Unexpected Error Occurred', err);
+      console.error('Unexpected Error Occurred while fetching payment details', err);
+      Alert.alert('Error', 'Could not fetch payment details.');
+    } finally {
+      setLoading(false);
     }
-  }
+  }, [settingsId, houseNo]);
 
   useEffect(() => {
-    fetchPaymentDetails();
+    const fetchSettings = async () => {
+      try {
+        const id = await AsyncStorage.getItem('settingId');
+        if (id) {
+          setSettingsId(id);
+          const { data, error } = await supabase
+            .from('Association_Settings')
+            .select('Annual_Fee')
+            .eq('id', id)
+            .single();
+          if (error) throw error;
+          if (data) setAnnualFee(data.Annual_Fee);
+        }
+      } catch (error) {
+        console.error('Error fetching settings', error);
+        Alert.alert('Error', 'Could not load association settings.');
+      }
+    };
+    fetchSettings();
   }, []);
 
   useEffect(() => {
-    if (payments?.PaidAmount !== undefined) {
-      const pending = 1500 - payments.PaidAmount;
-      setAmt(pending);
-    }
-  }, [payments]);
+    fetchPaymentDetails();
+  }, [fetchPaymentDetails]);
 
   const insertReceipt = async () => {
+    const amt = Number(amountToPay);
+    if (isNaN(amt) || amt <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid amount to continue.');
+      return;
+    }
+
+    if (payments?.PaidAmount === annualFee) {
+      Alert.alert('Payment Complete', 'This member has already paid the full amount.');
+      return;
+    }
+
+    if ((payments?.PaidAmount || 0) + amt > annualFee) {
+      Alert.alert('Invalid Amount', `Payment exceeds the required annual fee of ₹${annualFee}.`);
+      return;
+    }
+
     setLoading(true);
-    const paidAmt = payments?.PaidAmount + amt;
-    console.log(paidAmt);
-    
-    if (amt === 0) {
-      Alert.alert('Failed', 'Enter Amount to continue');
-      setLoading(false);
-      return;
-    }
-
-    if (payments?.PaidAmount === 1500) {
-      Alert.alert('Failed', 'Member already paid full amount');
-      setLoading(false);
-      return;
-    }
-
-    if (paidAmt > 1500) {
-      Alert.alert('Failed', 'You can only pay up to ₹1500');
-      setLoading(false);
-      return;
-    }
-
-    if (receiptNo === 0) {
-      setReceiptNo('');
-    }
-
     try {
-      const {error} = await supabase
+      const { error } = await supabase
         .from('Payments')
         .insert({
           HouseNumber: houseNo,
           Amount_Paid: amt,
-          Mode: paymentMode,
+          Mode: paymentMode, 
           ReceiptNumber: receiptNo,
-          Notes: notes
-        })
+          Notes: notes,
+          AssociationId: settingsId
+        });
 
       if (error) {
-        if (error.message.includes('duplicate key value') &&
-            error.message.includes('"Payments_ReceiptNumber_key"')) {
-          Alert.alert('Failed', 'Receipt number already exists.');
-          setLoading(false);
-          return;
-        } else {
-          console.error("Insertion Error Occurred", error.message);
-          setLoading(false);
-          return;
-        }
+        throw error;
       }
 
-      console.log(paidAmt);
-
-      if (paidAmt === 1500) {
-        const {error2} = await supabase
-          .from('House_Payment_Status')
-          .update({
-              PaidAmount: paidAmt,
-              Status: 'Completed'
-          })
-          .eq('HouseNumber', houseNo);
-
-          if (error2) {
-            console.error('Updation Error Occurred', error2.message);
-            setLoading(false);
-            return;
-          }
-
-        Alert.alert('Success', 'Payment completed successfully!', [
-          {text: 'OK', onPress: () => console.log('OK Pressed')}
-        ]);
-        fetchPaymentDetails();
-        setAmt('');
-        setReceiptNo('');
-        setNotes('');
-        setLoading(false);
-        return;  
-      } else {
-        const {error2} = await supabase
-          .from('House_Payment_Status')
-          .update({
-              PaidAmount: paidAmt
-          })
-          .eq('HouseNumber', houseNo);
-
-          if (error2) {
-            console.error('Updation Error Occurred', error2.message);
-            setLoading(false);
-            return;
-          }
-
-        Alert.alert('Success', 'Payment recorded successfully!', [
-          {text: 'OK', onPress: () => console.log('OK Pressed')}
-        ]);
-        fetchPaymentDetails();
-        setAmt('');
-        setReceiptNo('');
-        setNotes('');
-        setLoading(false);
-        return;  
-      }
+      Alert.alert('Success', 'Payment recorded successfully!');
+      clearForm();
+      navigation.navigate('MemberDetails', { houseNo });
     } catch (err) {
-      console.error('Unexpected Error Occurred', err);
+      console.error('Unexpected Error Occurred during insert', err);
+      if (err.message.includes('duplicate key value')) {
+        Alert.alert('Insert Failed', 'This receipt number already exists.');
+      } else {
+        Alert.alert('Insert Failed', err.message);
+      }
+    } finally {
       setLoading(false);
     }
   }
 
-  const pendingAmount = 1500 - (payments?.PaidAmount || 0);
-  const progressPercentage = ((payments?.PaidAmount || 0) / 1500) * 100;
+  const clearForm = () => {
+    setAmountToPay('');
+    setReceiptNo(null);
+    setNotes('');
+  }
+
+  const pendingAmount = annualFee - (payments?.PaidAmount || 0);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.associationTitle}>PKRA 2025</Text>
         <Text style={styles.pageTitle}>Payment Portal</Text>
       </View>
 
-      {/* Member Details Card */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Icon name="account-circle" size={24} color="#4A90E2" />
@@ -191,38 +155,28 @@ const PaymentScreen = ({route}) => {
         </View>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Member Name:</Text>
-          <Text style={styles.detailValue}>{payments?.Members?.Name ?? 'Name of the Main Member'}</Text>
+          <Text style={styles.detailValue}>{payments?.Members?.Name ?? 'Loading...'}</Text>
         </View>
       </View>
 
-      {/* Payment Status Card */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Icon name="payment" size={24} color="#4A90E2" />
           <Text style={styles.cardTitle}>Payment Status</Text>
         </View>
-        
-        {/* Progress Bar
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progressPercentage}%` }]} />
-          </View>
-          <Text style={styles.progressText}>{progressPercentage.toFixed(1)}% Complete</Text>
-        </View> */}
-
         <View style={styles.paymentSummary}>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Paid </Text>
+            <Text style={styles.summaryLabel}>Paid</Text>
             <Text style={styles.summaryValue}>₹{payments?.PaidAmount || 0}</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Pending </Text>
-            <Text style={[styles.summaryValue, { color: '#FF6B6B' }]}>₹{pendingAmount}</Text>
+            <Text style={styles.summaryLabel}>Pending</Text>
+            <Text style={[styles.summaryValue, { color: '#FF6B6B' }]}>₹{pendingAmount > 0 ? pendingAmount : 0}</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Status </Text>
+            <Text style={styles.summaryLabel}>Status</Text>
             <View style={[
-              styles.statusBadge, 
+              styles.statusBadge,
               { backgroundColor: payments?.Status === 'Completed' ? '#4CAF50' : '#FF9800' }
             ]}>
               <Text style={styles.statusText}>{payments?.Status || 'Pending'}</Text>
@@ -231,7 +185,6 @@ const PaymentScreen = ({route}) => {
         </View>
       </View>
 
-      {/* Payment Form */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Icon name="add-circle" size={24} color="#4A90E2" />
@@ -240,23 +193,23 @@ const PaymentScreen = ({route}) => {
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Amount to Pay (₹)</Text>
-          <TextInput 
-            style={styles.inputBox} 
-            keyboardType='numeric' 
-            value={amt.toString()} 
-            onChangeText={(text) => setAmt(Number(text))}
+          <TextInput
+            style={styles.inputBox}
+            keyboardType='numeric'
+            value={amountToPay}
+            onChangeText={setAmountToPay}
             placeholder="Enter amount"
           />
         </View>
-        
+
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Receipt Number</Text>
-          <TextInput 
-            style={styles.inputBox} 
-            placeholder='e.g., 007' 
-            keyboardType='numeric' 
-            value={receiptNo?.toString() || ''} 
-            onChangeText={(text) => setReceiptNo(text ? Number(text) : null)}
+          <TextInput
+            style={styles.inputBox}
+            placeholder='e.g., 100'
+            keyboardType='numeric'
+            value={String(receiptNo)}
+            onChangeText={setReceiptNo}
           />
         </View>
 
@@ -265,11 +218,11 @@ const PaymentScreen = ({route}) => {
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={paymentMode}
-              onValueChange={(itemValue) => setPaymentMode(itemValue)}
+              onValueChange={setPaymentMode}
               style={styles.picker}
             >
-              <Picker.Item label="💵 Cash" value="Cash"/>
-              <Picker.Item label="📱 UPI" value="UPI"/>
+              <Picker.Item label="💵 Cash" value="Cash" />
+              <Picker.Item label="📱 UPI" value="UPI" />
             </Picker>
           </View>
         </View>
@@ -282,13 +235,13 @@ const PaymentScreen = ({route}) => {
             multiline={true}
             numberOfLines={4}
             value={notes}
-            onChangeText={(text) => setNotes(text)}
+            onChangeText={setNotes}
             textAlignVertical="top"
           />
         </View>
-        
-        <TouchableOpacity 
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]} 
+
+        <TouchableOpacity
+          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
           onPress={insertReceipt}
           disabled={loading}
         >
@@ -378,27 +331,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
     textAlign: 'right',
-  },
-  progressContainer: {
-    marginBottom: 16,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#4CAF50',
-    borderRadius: 4,
-  },
-  progressText: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
   },
   paymentSummary: {
     flexDirection: 'row',

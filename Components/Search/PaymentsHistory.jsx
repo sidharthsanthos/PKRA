@@ -1,15 +1,18 @@
 import { StyleSheet, Text, View, Platform, StatusBar, ScrollView, TouchableOpacity, Modal } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../Config';
 
 const PaymentsHistory = ({ route }) => {
     const houseNo = route.params.houseNo;
+    const [settingsId, setSettingsId] = useState(null);
     const [payments, setPayments] = useState([]);
     const [selectedPayment, setSelectedPayment] = useState(null);
     const [loading, setLoading] = useState(true);
     const [totalAmount, setTotalAmount] = useState(0);
 
-    const fetchPayments = async () => {
+    const fetchPayments = useCallback(async () => {
+        if (!settingsId) return;
         console.log(houseNo);
         setLoading(true);
         
@@ -18,6 +21,7 @@ const PaymentsHistory = ({ route }) => {
                 .from('Payments')
                 .select('*')
                 .eq('HouseNumber', houseNo)
+                .eq('AssociationId', settingsId)
                 .order('created_at', { ascending: false });
 
             if (error) {
@@ -28,19 +32,37 @@ const PaymentsHistory = ({ route }) => {
             console.log(data);
             setPayments(data);
             
-            // Calculate total amount
-            const total = data.reduce((sum, payment) => sum + (payment.Amount_Paid || 0), 0);
-            setTotalAmount(total);
+            const { data: total} = await supabase
+            .from('House_Payment_Status')
+            .select('PaidAmount')
+            .eq('HouseNumber', houseNo)
+            .eq('AssociationId', settingsId)
+            .single();
+
+            setTotalAmount(total.PaidAmount || 0);
         } catch (err) {
             console.error('Unexpected Error Occurred', err);
         } finally {
             setLoading(false);
         }
-    };
+    }, [settingsId, houseNo]);
+
+    useEffect(() => {
+        const fetchSettingsId = async () => {
+            const id = await AsyncStorage.getItem('settingId');
+            if (id) {
+                setSettingsId(id);
+            } else {
+                console.warn('No Settings ID found in storage');
+                setLoading(false);
+            }
+        }
+        fetchSettingsId();
+    }, []);
 
     useEffect(() => {
         fetchPayments();
-    }, []);
+    }, [fetchPayments]);
 
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('en-IN', {
@@ -73,7 +95,7 @@ const PaymentsHistory = ({ route }) => {
                     <Text style={styles.modeLabel}>Mode:</Text>
                     <Text style={styles.modeValue}>{item.Mode}</Text>
                 </View>
-                <Text style={styles.receiptText}>Receipt: {item.ReceiptNumber}</Text>
+                <Text style={styles.receiptText}>Receipt: {item.ReceiptNumber ? item.ReceiptNumber : 'N/A'}</Text>
             </View>
         </TouchableOpacity>
     );

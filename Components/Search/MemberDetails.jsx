@@ -1,69 +1,80 @@
-import { ActivityIndicator, StyleSheet, Text, View, Platform, StatusBar, TouchableOpacity, FlatList, Linking, Alert,ScrollView } from 'react-native'
-import React, { useEffect, useState } from 'react'
+import { ActivityIndicator, StyleSheet, Text, View, Platform, StatusBar, TouchableOpacity, Linking, Alert, ScrollView } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../Config';
 
-const MemberDetails = ({route, navigation}) => {
-    const {houseNo} = route.params;
-    const [member, setMember] = useState([]);
+const MemberDetails = ({ route, navigation }) => {
+    const { houseNo } = route.params;
+    const [memberData, setMemberData] = useState(null);
+    const [annualFee, setAnnualFee] = useState(0);
+    const [settingsId, setSettingsId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [payments, setPayments] = useState([]);
 
-    const fetchMember = async () => {
+    const fetchAllData = useCallback(async () => {
+        if (!settingsId) return;
+        setLoading(true);
         try {
-            console.log(houseNo);
-            
-            const {data, error} = await supabase
-               .from('House_Payment_Status')
-               .select('*,Members(*)')
-               .eq('HouseNumber', houseNo);
+            const { data: statusData, error: statusError } = await supabase
+                .from('House_Payment_Status')
+                .select('*,Members(*)')
+                .eq('HouseNumber', houseNo)
+                .eq('AssociationId', settingsId)
+                .single();
 
-            if (error) {
-                console.error('Fetching Error Occured', error.message);
-                return;
-            }
-            console.log(data);
-            
-            setMember(data);
+            if (statusError) throw statusError;
+            setMemberData(statusData);
+
+            const { data: paymentsData, error: paymentsError } = await supabase
+                .from('Payments')
+                .select('*')
+                .eq('HouseNumber', houseNo)
+                .eq('AssociationId', settingsId)
+                .order('created_at', { ascending: false });
+
+            if (paymentsError) throw paymentsError;
+            setPayments(paymentsData || []);
+
+        } catch (err) {
+            console.error('Unexpected Error Occurred', err);
+            Alert.alert("Error", "Failed to fetch member details.");
+        } finally {
             setLoading(false);
-        } catch (err) {
-            console.error('Unexpected Error Occured', err);
         }
-    }
+    }, [settingsId, houseNo]);
 
-    const fetchPayments = async () => {
-        try {
-            const {data, error} = await supabase
-               .from('Payments')
-               .select('*')
-               .eq('HouseNumber', houseNo)
-               .order('created_at', {ascending: false});
-
-            if (error) {
-                console.error('Payments Fetching Error Occured', error.message);
-                return;
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const id = await AsyncStorage.getItem('settingId');
+                if (id) {
+                    setSettingsId(id);
+                    const { data, error } = await supabase
+                        .from('Association_Settings')
+                        .select('Annual_Fee')
+                        .eq('id', id)
+                        .single();
+                    if (error) throw error;
+                    if (data) setAnnualFee(data.Annual_Fee);
+                }
+            } catch (error) {
+                console.error('Error fetching settings', error);
+                Alert.alert('Error', 'Could not load association settings.');
             }
-
-            console.log(data);
-            setPayments(data);
-        } catch (err) {
-            console.error('Unexpected Error Occured', err);
-        }
-    }
-
-    useEffect(() => {
-        console.log(houseNo);
-        fetchMember();
+        };
+        fetchSettings();
     }, []);
 
     useEffect(() => {
-        fetchPayments();
-    }, []);
+        fetchAllData();
+    }, [fetchAllData]);
+
 
     const handleCallMember = () => {
-        if (member[0]?.Members?.Phno) {
-            Linking.openURL(`tel:${member[0].Members.Phno}`);
+        if (memberData?.Members?.Phno) {
+            Linking.openURL(`tel:${memberData.Members.Phno}`);
         } else {
-            Alert.alert('Failed', 'No Phone Number');
+            Alert.alert('Failed', 'No Phone Number available');
         }
     }
 
@@ -74,67 +85,63 @@ const MemberDetails = ({route, navigation}) => {
         </View>
     );
 
-    if (!member || member.length === 0) return (
+    if (!memberData) return (
         <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>No data found</Text>
+            <Text style={styles.errorText}>No data found for this member in the current cycle.</Text>
         </View>
     );
 
-    const memberData = member[0];
-
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            {/* Header Section */}
             <View style={styles.headerCard}>
                 <Text style={styles.houseNumber}>House {houseNo}</Text>
-                <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>Active</Text>
+                <View style={[styles.statusBadge, {backgroundColor: memberData?.Status === 'Completed' ? '#2ECC71' : '#F39C12'}]}>
+                    <Text style={styles.statusText}>{memberData?.Status || 'Pending'}</Text>
                 </View>
             </View>
 
-            {/* Member Information Card */}
             <View style={styles.memberCard}>
                 <Text style={styles.cardTitle}>Member Information</Text>
                 
                 <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Name:</Text>
-                    <Text style={styles.infoValue}>{memberData.Members.Name}</Text>
+                    <Text style={styles.infoValue}>{memberData?.Members?.Name || 'N/A'}</Text>
                 </View>
                 
                 <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Division:</Text>
-                    <Text style={styles.infoValue}>{memberData.Members.Division}</Text>
+                    <Text style={styles.infoValue}>{memberData?.Members?.Division || 'N/A'}</Text>
                 </View>
                 
                 <TouchableOpacity 
                     style={styles.infoRow} 
                     onPress={handleCallMember}
-                    disabled={!memberData.Members.Phno}
+                    disabled={!memberData?.Members?.Phno}
                 >
                     <Text style={styles.infoLabel}>Mobile:</Text>
                     <Text style={[
                         styles.infoValue, 
-                        memberData.Members.Phno && styles.phoneNumber
+                        memberData?.Members?.Phno && styles.phoneNumber
                     ]}>
-                        {memberData.Members.Phno ?? 'Not Available'}
+                        {memberData?.Members?.Phno ?? 'Not Available'}
                     </Text>
                 </TouchableOpacity>
                 
                 <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Amount Paid:</Text>
-                    <Text style={styles.amountPaid}>₹{memberData.PaidAmount}</Text>
+                    <Text style={styles.amountPaid}>₹{memberData?.PaidAmount || 0}</Text>
                 </View>
             </View>
 
-            {/* Payment Button */}
-            <TouchableOpacity 
-                style={styles.paymentButton}
-                onPress={() => navigation.navigate('PaymentScreen', {houseNo: houseNo})}
-            >
-                <Text style={styles.paymentButtonText}> Make Payment</Text>
-            </TouchableOpacity>
+            {annualFee > (memberData?.PaidAmount || 0) && (
+                <TouchableOpacity 
+                    style={styles.paymentButton}
+                    onPress={() => navigation.navigate('PaymentScreen', {houseNo: houseNo})}
+                >
+                    <Text style={styles.paymentButtonText}>Make Payment</Text>
+                </TouchableOpacity>
+            )}
 
-            {/* Payment History Section */}
             <View style={styles.historyCard}>
                 <Text style={styles.cardTitle}>Recent Payment History</Text>
                 
@@ -153,7 +160,7 @@ const MemberDetails = ({route, navigation}) => {
                                     <Text style={styles.paymentAmount}>₹{item.Amount_Paid}</Text>
                                 </View>
                                 <Text style={styles.paymentMode}>
-                                    Payment Mode: {item.Mode}
+                                    Payment Mode: {item.Mode_of_Payment}
                                 </Text>
                             </View>
                         ))}
@@ -164,14 +171,14 @@ const MemberDetails = ({route, navigation}) => {
                     </View>
                 )}
 
-                    {payments.length > 0 && (
+                {payments.length > 0 && (
                     <TouchableOpacity 
                         style={styles.seeMoreButton}
                         onPress={() => navigation.navigate('PaymentHistory', { houseNo })}
                     >
                         <Text style={styles.seeMoreText}>View All Payment History →</Text>
                     </TouchableOpacity>
-                    )}
+                )}
             </View>
         </ScrollView>
     )
