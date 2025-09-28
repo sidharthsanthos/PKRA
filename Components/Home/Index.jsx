@@ -82,8 +82,8 @@ const HomeContainer = () => {
       };
 
       calculatedStats.amountReceived = payments.reduce((sum, p) => sum + p.Amount_Paid, 0);
-      calculatedStats.cashInHand = payments.filter(p => p.Mode_of_Payment === 'Cash').reduce((sum, p) => sum + p.Amount_Paid, 0);
-      calculatedStats.cashInUpi = payments.filter(p => p.Mode_of_Payment === 'UPI').reduce((sum, p) => sum + p.Amount_Paid, 0);
+      calculatedStats.cashInHand = payments.filter(p => p.Mode === 'Cash').reduce((sum, p) => sum + p.Amount_Paid, 0);
+      calculatedStats.cashInUpi = payments.filter(p => p.Mode === 'UPI').reduce((sum, p) => sum + p.Amount_Paid, 0);
 
       members.forEach(member => {
         const divisionData = calculatedStats.byDivision[member.Division];
