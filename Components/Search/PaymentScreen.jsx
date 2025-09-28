@@ -1,17 +1,8 @@
-import {
-  StyleSheet,
-  Text,
-  View,
-  Platform,
-  StatusBar,
-  TextInput,
-  Alert,
-  ScrollView,
-  Dimensions
-} from 'react-native';
+import { KeyboardAvoidingView, StyleSheet, Text, View, Platform, StatusBar, TextInput, Alert, ScrollView, Dimensions } from 'react-native';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../Config';
 import { TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,11 +12,11 @@ const { width } = Dimensions.get('window');
 const PaymentScreen = ({ route, navigation }) => {
   const { houseNo } = route.params;
   const [settingsId, setSettingsId] = useState(null);
-  const [payments, setPayments] = useState(null);
+  const [paymentStatus, setPaymentStatus] = useState(null);
   const [annualFee, setAnnualFee] = useState(0);
-  const [amountToPay, setAmountToPay] = useState(0);
+  const [amountToPay, setAmountToPay] = useState('');
   const [paymentMode, setPaymentMode] = useState('Cash');
-  const [receiptNo, setReceiptNo] = useState(0);
+  const [receiptNo, setReceiptNo] = useState(null);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -40,8 +31,8 @@ const PaymentScreen = ({ route, navigation }) => {
         .eq('AssociationId', settingsId)
         .single();
 
-      if (error) throw error;
-      setPayments(data);
+      if (error && error.code !== 'PGRST116') throw error; // Ignore no rows found error
+      setPaymentStatus(data);
     } catch (err) {
       console.error('Unexpected Error Occurred while fetching payment details', err);
       Alert.alert('Error', 'Could not fetch payment details.');
@@ -83,12 +74,12 @@ const PaymentScreen = ({ route, navigation }) => {
       return;
     }
 
-    if (payments?.PaidAmount === annualFee) {
+    if (paymentStatus?.PaidAmount === annualFee) {
       Alert.alert('Payment Complete', 'This member has already paid the full amount.');
       return;
     }
 
-    if ((payments?.PaidAmount || 0) + amt > annualFee) {
+    if ((paymentStatus?.PaidAmount || 0) + amt > annualFee) {
       Alert.alert('Invalid Amount', `Payment exceeds the required annual fee of ₹${annualFee}.`);
       return;
     }
@@ -100,7 +91,7 @@ const PaymentScreen = ({ route, navigation }) => {
         .insert({
           HouseNumber: houseNo,
           Amount_Paid: amt,
-          Mode: paymentMode, 
+          Mode_of_Payment: paymentMode,
           ReceiptNumber: receiptNo,
           Notes: notes,
           AssociationId: settingsId
@@ -131,127 +122,137 @@ const PaymentScreen = ({ route, navigation }) => {
     setNotes('');
   }
 
-  const pendingAmount = annualFee - (payments?.PaidAmount || 0);
+  const pendingAmount = annualFee - (paymentStatus?.PaidAmount || 0);
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <Text style={styles.associationTitle}>PKRA 2025</Text>
-        <Text style={styles.pageTitle}>Payment Portal</Text>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Icon name="account-circle" size={24} color="#4A90E2" />
-          <Text style={styles.cardTitle}>Member Details</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Division:</Text>
-          <Text style={styles.detailValue}>{payments?.Members?.Division ?? 'N/A'}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>House Number:</Text>
-          <Text style={styles.detailValue}>{houseNo}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Member Name:</Text>
-          <Text style={styles.detailValue}>{payments?.Members?.Name ?? 'Loading...'}</Text>
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Icon name="payment" size={24} color="#4A90E2" />
-          <Text style={styles.cardTitle}>Payment Status</Text>
-        </View>
-        <View style={styles.paymentSummary}>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Paid</Text>
-            <Text style={styles.summaryValue}>₹{payments?.PaidAmount || 0}</Text>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <View style={styles.header}>
+            <Text style={styles.associationTitle}>PKRA 2025</Text>
+            <Text style={styles.pageTitle}>Payment Portal</Text>
           </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Pending</Text>
-            <Text style={[styles.summaryValue, { color: '#FF6B6B' }]}>₹{pendingAmount > 0 ? pendingAmount : 0}</Text>
-          </View>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>Status</Text>
-            <View style={[
-              styles.statusBadge,
-              { backgroundColor: payments?.Status === 'Completed' ? '#4CAF50' : '#FF9800' }
-            ]}>
-              <Text style={styles.statusText}>{payments?.Status || 'Pending'}</Text>
+
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Icon name="account-circle" size={24} color="#4A90E2" />
+              <Text style={styles.cardTitle}>Member Details</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Division:</Text>
+              <Text style={styles.detailValue}>{paymentStatus?.Members?.Division ?? 'N/A'}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>House Number:</Text>
+              <Text style={styles.detailValue}>{houseNo}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Member Name:</Text>
+              <Text style={styles.detailValue}>{paymentStatus?.Members?.Name ?? 'Loading...'}</Text>
             </View>
           </View>
-        </View>
-      </View>
 
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Icon name="add-circle" size={24} color="#4A90E2" />
-          <Text style={styles.cardTitle}>Add Payment</Text>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Amount to Pay (₹)</Text>
-          <TextInput
-            style={styles.inputBox}
-            keyboardType='numeric'
-            value={amountToPay}
-            onChangeText={setAmountToPay}
-            placeholder="Enter amount"
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Receipt Number</Text>
-          <TextInput
-            style={styles.inputBox}
-            placeholder='e.g., 100'
-            keyboardType='numeric'
-            value={String(receiptNo)}
-            onChangeText={setReceiptNo}
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Payment Mode</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={paymentMode}
-              onValueChange={setPaymentMode}
-              style={styles.picker}
-            >
-              <Picker.Item label="💵 Cash" value="Cash" />
-              <Picker.Item label="📱 UPI" value="UPI" />
-            </Picker>
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Icon name="payment" size={24} color="#4A90E2" />
+              <Text style={styles.cardTitle}>Payment Status</Text>
+            </View>
+            <View style={styles.paymentSummary}>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Paid</Text>
+                <Text style={styles.summaryValue}>₹{paymentStatus?.PaidAmount || 0}</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Pending</Text>
+                <Text style={[styles.summaryValue, { color: '#FF6B6B' }]}>₹{pendingAmount > 0 ? pendingAmount : 0}</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Status</Text>
+                <View style={[
+                  styles.statusBadge,
+                  { backgroundColor: paymentStatus?.Status === 'Completed' ? '#4CAF50' : '#FF9800' }
+                ]}>
+                  <Text style={styles.statusText}>{paymentStatus?.Status || 'Pending'}</Text>
+                </View>
+              </View>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Additional Notes (Optional)</Text>
-          <TextInput
-            style={[styles.inputBox, styles.textArea]}
-            placeholder='Enter any additional comments...'
-            multiline={true}
-            numberOfLines={4}
-            value={notes}
-            onChangeText={setNotes}
-            textAlignVertical="top"
-          />
-        </View>
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Icon name="add-circle" size={24} color="#4A90E2" />
+              <Text style={styles.cardTitle}>Add Payment</Text>
+            </View>
 
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          onPress={insertReceipt}
-          disabled={loading}
-        >
-          <Icon name="check-circle" size={20} color="#FFF" />
-          <Text style={styles.submitButtonText}>
-            {loading ? 'Processing...' : 'Record Payment'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Amount to Pay (₹)</Text>
+              <TextInput
+                style={styles.inputBox}
+                keyboardType='numeric'
+                value={amountToPay}
+                onChangeText={setAmountToPay}
+                placeholder="Enter amount"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Receipt Number</Text>
+              <TextInput
+                style={styles.inputBox}
+                placeholder='e.g., 100'
+                keyboardType='numeric'
+                value={receiptNo ? String(receiptNo) : ''}
+                onChangeText={(text) => setReceiptNo(text ? Number(text) : null)}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Payment Mode</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={paymentMode}
+                  onValueChange={setPaymentMode}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="💵 Cash" value="Cash" />
+                  <Picker.Item label="📱 UPI" value="UPI" />
+                </Picker>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Additional Notes (Optional)</Text>
+              <TextInput
+                style={[styles.inputBox, styles.textArea]}
+                placeholder='Enter any additional comments...'
+                multiline={true}
+                numberOfLines={4}
+                value={notes}
+                onChangeText={setNotes}
+                textAlignVertical="top"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+              onPress={insertReceipt}
+              disabled={loading}
+            >
+              <Icon name="check-circle" size={20} color="#FFF" />
+              <Text style={styles.submitButtonText}>
+                {loading ? 'Processing...' : 'Record Payment'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   )
 }
 
@@ -261,7 +262,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F7FA',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  scrollContent: {
+    paddingBottom: 40, // Ensures space at the bottom
   },
   header: {
     backgroundColor: '#4A90E2',

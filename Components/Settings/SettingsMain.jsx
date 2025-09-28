@@ -19,6 +19,11 @@ const SettingsMain = () => {
 
   const createSetting = async () => {
     setLoading(true);
+    if(newSetting.Annual_Fee <= 0) {
+      Alert.alert('Invalid Input', 'Please enter a valid annual fee.');
+      setLoading(false);
+      return;
+    }
     try {
       const { data } = await supabase
       .from('Association_Settings')
@@ -32,6 +37,7 @@ const SettingsMain = () => {
       await AsyncStorage.setItem('settingId',JSON.stringify(data[0]))
       fetchSettings();
     } catch (error) {
+      Alert.alert('Error', 'Failed to create new settings. Please try again.');
       console.error('Error Creating Setting', error.message);
     } finally {
       setLoading(false);
@@ -48,8 +54,12 @@ const SettingsMain = () => {
         'Due_date': newSetting.Due_date,
       })
       .eq('id', currentSetting.id)
+
+      Alert.alert('Success', 'Settings updated successfully.');
+
       fetchSettings();
     } catch (error) {
+      Alert.alert('Error', 'Failed to update settings. Please try again.');
       console.error('Error Updating Setting', error.message);
     } finally {
       setLoading(false);
@@ -68,6 +78,7 @@ const SettingsMain = () => {
         setCurrentSetting(data[0]);
       }
     } catch (error) {
+      Alert.alert('Error', 'Failed to fetch settings. Please try again.');
       console.error('Error Fetching Settings', error.message);
     } finally {
       setLoading(false);

@@ -1,7 +1,8 @@
-import { Alert,ActivityIndicator, StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { KeyboardAvoidingView, Alert, ActivityIndicator, StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {useState, useEffect, useRef} from 'react';
+import {useState, useEffect, useRef, useCallback} from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {Picker} from '@react-native-picker/picker';
 import { supabase } from '../Config';
 
@@ -29,6 +30,11 @@ const PaymentMain = () => {
     setHouses([]);
   }
 
+  useFocusEffect(
+    useCallback(() => {
+      clearForm();
+    }, [])
+  )
    const fetchHouses = async () => {
     setLoading(true);
     try {
@@ -127,113 +133,117 @@ const PaymentMain = () => {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container}>
-        {loading && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#4299E1" />
-          </View>
-        )}
-        <ScrollView
-          vertical
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          <View style={styles.card}>
-          <Text style={styles.title}>Make a Payment</Text>
+          {loading && (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#4299E1" />
+            </View>
+          )}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 40 }}
+          >
+            <View style={styles.card}>
+            <Text style={styles.title}>Make a Payment</Text>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Select Division</Text>
-            <View style={styles.pickerContainer}>
-              {loading ? (
-                <ActivityIndicator size="small" color="#4299E1" />
-              ) : (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Select Division</Text>
+              <View style={styles.pickerContainer}>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#4299E1" />
+                ) : (
+                  <Picker
+                    required
+                    ref={divisionRef}
+                    selectedValue={selectedDivision}
+                  onValueChange={(div) => setSelectedDivision(div)}
+                >
+                  <Picker.Item label="Select Division" value="" />
+                  {division.map((div) => <Picker.Item label={div} value={div} key={div}/>)}
+                </Picker>)}
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Select House </Text>
+              <View style={styles.pickerContainer}>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#4299E1" />
+                ) : (
+                  <Picker 
+                    required
+                    ref={houseRef}
+                    selectedValue={selectedHouse}
+                    onValueChange={setSelectedHouse}
+                  >
+                    <Picker.Item label="Select House" value="" />
+                    {houses.map((house) => (
+                      <Picker.Item
+                        label={house.HouseNumber}
+                        value={house}
+                        key={house.HouseNumber}
+                      />
+                    ))}
+                  </Picker>
+                )}
+              </View>
+            </View>
+
+
+            <View style={styles.infoGroup}>
+              <Text style={styles.label}>Owner</Text>
+              <Text style={styles.infoText}>{selectedHouse?.Name || '...'}</Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Mode of Payment</Text>
+              <View style={styles.pickerContainer}>
                 <Picker
                   required
-                  ref={divisionRef}
-                  selectedValue={selectedDivision}
-                onValueChange={(div) => setSelectedDivision(div)}
-              >
-                <Picker.Item label="Select Division" value="" />
-                {division.map((div) => <Picker.Item label={div} value={div} key={div}/>)}
-              </Picker>)}
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Select House </Text>
-            <View style={styles.pickerContainer}>
-              {loading ? (
-                <ActivityIndicator size="small" color="#4299E1" />
-              ) : (
-                <Picker 
-                  required
-                  ref={houseRef}
-                  selectedValue={selectedHouse}
-                  onValueChange={setSelectedHouse}
+                  ref={paymentRef}
+                  selectedValue={mode}
+                  onValueChange={setMode}
                 >
-                  <Picker.Item label="Select House" value="" />
-                  {houses.map((house) => (
-                    <Picker.Item
-                      label={house.HouseNumber}
-                      value={house}
-                      key={house.HouseNumber}
-                    />
-                  ))}
+                  <Picker.Item label="Select Payment Method" value='' />
+                  <Picker.Item label="Cash" value="Cash" />
+                  <Picker.Item label="UPI" value="UPI" />
                 </Picker>
-              )}
+              </View>
             </View>
-          </View>
 
-
-          <View style={styles.infoGroup}>
-            <Text style={styles.label}>Owner</Text>
-            <Text style={styles.infoText}>{selectedHouse?.Name || '...'}</Text>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Mode of Payment</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                required
-                ref={paymentRef}
-                selectedValue={mode}
-                onValueChange={setMode}
-              >
-                <Picker.Item label="Select Payment Method" value='' />
-                <Picker.Item label="Cash" value="Cash" />
-                <Picker.Item label="UPI" value="UPI" />
-              </Picker>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Amount</Text>
+              <TextInput
+                style={styles.input}
+                onChangeText={text => setAmount(Number(text))}
+                value={String(amount)}
+                keyboardType='numeric'
+              />
             </View>
-          </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Amount</Text>
-            <TextInput
-              autoFocus
-              style={styles.input}
-              onChangeText={text => setAmount(Number(text))}
-              value={String(amount)}
-              keyboardType='numeric'
-            />
-          </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Receipt Number</Text>
+              <TextInput
+                style={styles.input}
+                onChangeText={text => setReceiptNumber(Number(text))}
+                value={receiptNumber ? String(receiptNumber) : ''}
+                placeholder='Receipt Number'
+                keyboardType='numeric'
+              />
+            </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Receipt Number</Text>
-            <TextInput
-              style={styles.input}
-              onChangeText={text => setReceiptNumber(Number(text))}
-              value={receiptNumber ? String(receiptNumber) : ''}
-              placeholder='Receipt Number'
-              keyboardType='numeric'
-            />
+            <TouchableOpacity 
+              style={styles.button}
+              onPress={addPayment}
+            >
+              <Text style={styles.buttonText}>Pay</Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity 
-            style={styles.button}
-            onPress={addPayment}
-          >
-            <Text style={styles.buttonText}>Pay</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
       </SafeAreaView>
     </SafeAreaProvider>
   )
