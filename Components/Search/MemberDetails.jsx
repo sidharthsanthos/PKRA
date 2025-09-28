@@ -160,7 +160,7 @@ const MemberDetails = ({ route, navigation }) => {
                                     <Text style={styles.paymentAmount}>₹{item.Amount_Paid}</Text>
                                 </View>
                                 <Text style={styles.paymentMode}>
-                                    Payment Mode: {item.Mode_of_Payment}
+                                    Payment Mode: {item.Mode}
                                 </Text>
                             </View>
                         ))}

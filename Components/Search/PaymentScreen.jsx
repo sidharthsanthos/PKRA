@@ -91,7 +91,7 @@ const PaymentScreen = ({ route, navigation }) => {
         .insert({
           HouseNumber: houseNo,
           Amount_Paid: amt,
-          Mode_of_Payment: paymentMode,
+          Mode: paymentMode,
           ReceiptNumber: receiptNo,
           Notes: notes,
           AssociationId: settingsId
