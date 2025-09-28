@@ -13,7 +13,6 @@ const PaymentsHistory = ({ route }) => {
 
     const fetchPayments = useCallback(async () => {
         if (!settingsId) return;
-        console.log(houseNo);
         setLoading(true);
         
         try {
@@ -29,7 +28,6 @@ const PaymentsHistory = ({ route }) => {
                 return;
             }
 
-            console.log(data);
             setPayments(data);
             
             const { data: total} = await supabase
