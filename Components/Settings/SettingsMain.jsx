@@ -87,7 +87,7 @@ const SettingsMain = () => {
 
   useEffect(() => {
     fetchSettings();
-    if(new Date().getMonth() < 9) 
+    if(new Date().getMonth() < 10) 
       setCurrentCycle(new Date().getFullYear()-1);
     else
       setCurrentCycle(new Date().getFullYear());
@@ -133,7 +133,7 @@ const SettingsMain = () => {
                   {settings.map((setting) => (
                     <Picker.Item 
                       key={setting.id}
-                      label={`Oct ${setting.Year} - Sep ${setting.Year + 1}`}
+                      label={`Nov ${setting.Year} - Oct ${setting.Year + 1}`}
                       value={setting.Year}
                     />)
                   )}
@@ -151,6 +151,7 @@ const SettingsMain = () => {
               <TextInput 
                 style={styles.input}
                 placeholder='Amount'
+                placeholderTextColor="#A9A9A9"
                 value={newSetting.Annual_Fee.toString()}
                 onChangeText={(text) => setNewSetting({...newSetting, Annual_Fee: parseInt(text, 10) || 0})}
                 keyboardType='numeric'
@@ -235,6 +236,7 @@ const styles = StyleSheet.create({
   },
   picker: {
     width: '100%',
+    color: 'black',
   },
   currentCycleText: {
     textAlign: 'center',

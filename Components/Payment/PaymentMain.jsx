@@ -156,10 +156,12 @@ const PaymentMain = () => {
                   <ActivityIndicator size="small" color="#4299E1" />
                 ) : (
                   <Picker
-                    required
-                    ref={divisionRef}
-                    selectedValue={selectedDivision}
-                  onValueChange={(div) => setSelectedDivision(div)}
+                  required
+                  ref={divisionRef}
+                  selectedValue={selectedDivision}
+                  placeholderTextColor="#A9A9A9"
+                  onValueChange={setSelectedDivision}
+                  style={styles.picker}
                 >
                   <Picker.Item label="Select Division" value="" />
                   {division.map((div) => <Picker.Item label={div} value={div} key={div}/>)}
@@ -178,6 +180,8 @@ const PaymentMain = () => {
                     ref={houseRef}
                     selectedValue={selectedHouse}
                     onValueChange={setSelectedHouse}
+                    style={styles.picker}
+                    placeholderTextColor="#A9A9A9"
                   >
                     <Picker.Item label="Select House" value="" />
                     {houses.map((house) => (
@@ -205,7 +209,7 @@ const PaymentMain = () => {
                   required
                   ref={paymentRef}
                   selectedValue={mode}
-                  onValueChange={setMode}
+                  style={styles.picker}
                 >
                   <Picker.Item label="Select Payment Method" value='' />
                   <Picker.Item label="Cash" value="Cash" />
@@ -217,6 +221,7 @@ const PaymentMain = () => {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Amount</Text>
               <TextInput
+                placeholderTextColor="#A9A9A9"
                 style={styles.input}
                 onChangeText={text => setAmount(Number(text))}
                 value={String(amount)}
@@ -232,6 +237,7 @@ const PaymentMain = () => {
                 value={receiptNumber ? String(receiptNumber) : ''}
                 placeholder='Receipt Number'
                 keyboardType='numeric'
+                placeholderTextColor="#A9A9A9"
               />
             </View>
 
@@ -308,6 +314,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#EDF2F7',
     padding: 12,
     borderRadius: 8,
+  },
+  picker: {
+    width: '100%',
+    height: 50,
+    color: 'black',
   },
   infoText: {
     fontSize: 16,

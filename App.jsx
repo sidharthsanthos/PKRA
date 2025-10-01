@@ -19,7 +19,7 @@ const App = () => {
     const getSettingId = async () => {
       let year;
       const currentMonth = new Date().getMonth();
-      if (currentMonth < 9) {
+      if (currentMonth < 10) {
         year = new Date().getFullYear() - 1;
       } else {
         year = new Date().getFullYear();

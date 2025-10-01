@@ -136,7 +136,7 @@ const HomeContainer = () => {
               {settings.map((setting) => (
                 <Picker.Item
                   key={setting.id}
-                  label={`Oct ${setting.Year} - Sep ${setting.Year + 1}`}
+                  label={`Nov ${setting.Year} - Oct ${setting.Year + 1}`}
                   value={setting.id}
                 />)
               )}
@@ -220,6 +220,7 @@ const styles = StyleSheet.create({
   picker: {
     width: '100%',
     height: 50,
+    color: 'black',
   },
   card: {
     backgroundColor: '#fff',

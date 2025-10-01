@@ -198,6 +198,7 @@ const PaymentScreen = ({ route, navigation }) => {
                 value={amountToPay}
                 onChangeText={setAmountToPay}
                 placeholder="Enter amount"
+                placeholderTextColor="#A9A9A9"
               />
             </View>
 
@@ -206,6 +207,7 @@ const PaymentScreen = ({ route, navigation }) => {
               <TextInput
                 style={styles.inputBox}
                 placeholder='e.g., 100'
+                placeholderTextColor="#A9A9A9"
                 keyboardType='numeric'
                 value={receiptNo ? String(receiptNo) : ''}
                 onChangeText={(text) => setReceiptNo(text ? Number(text) : null)}
@@ -219,6 +221,7 @@ const PaymentScreen = ({ route, navigation }) => {
                   selectedValue={paymentMode}
                   onValueChange={setPaymentMode}
                   style={styles.picker}
+                  placeholderTextColor="#A9A9A9"
                 >
                   <Picker.Item label="💵 Cash" value="Cash" />
                   <Picker.Item label="📱 UPI" value="UPI" />
@@ -231,6 +234,7 @@ const PaymentScreen = ({ route, navigation }) => {
               <TextInput
                 style={[styles.inputBox, styles.textArea]}
                 placeholder='Enter any additional comments...'
+                placeholderTextColor="#A9A9A9"
                 multiline={true}
                 numberOfLines={4}
                 value={notes}
