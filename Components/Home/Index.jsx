@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -13,11 +13,14 @@ const StatCard = ({ title, children }) => (
   </View>
 );
 
-const StatRow = ({ label, value }) => (
-  <View style={styles.statRow}>
-    <Text style={styles.statLabel}>{label}</Text>
-    <Text style={styles.statValue}>{value}</Text>
-  </View>
+const StatRow = ({ label, value, onPress}) => (
+  <TouchableOpacity onPress={onPress} disabled={!onPress}>
+    <View style={styles.statRow}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statValue}>{value}</Text>
+    </View>
+  </TouchableOpacity>
+  
 );
 
 const ProgressBar = ({ progress }) => (
@@ -26,7 +29,7 @@ const ProgressBar = ({ progress }) => (
   </View>
 );
 
-const HomeContainer = () => {
+const HomeContainer = ({navigation}) => {
   const [stats, setStats] = useState(null);
   const [settings, setSettings] = useState([]);
   const [currentSetting, setCurrentSetting] = useState(null);
@@ -150,20 +153,30 @@ const HomeContainer = () => {
           ) : (
             <>
               <StatCard title="Financial Summary">
-                <StatRow label="Amount Received" value={`₹ ${stats.amountReceived.toLocaleString()}`} />
-                <StatRow label="Amount Pending" value={`₹ ${stats.amountPending.toLocaleString()}`} />
+                <StatRow label="Amount Received" value={`₹ ${stats.amountReceived.toLocaleString()}`} onPress={()=>
+                  navigation.navigate("ReceivedDetails")
+                }/>
+                <StatRow label="Amount Pending" value={`₹ ${stats.amountPending.toLocaleString()}`} onPress={()=>
+                  navigation.navigate("PendingDetails")
+                }/>
                 <ProgressBar progress={progress} />
                 <Text style={styles.progressLabel}>{progress.toFixed(1)}% Collected</Text>
               </StatCard>
 
               <StatCard title="Cash Flow">
-                <StatRow label="Cash in Hand" value={`₹ ${stats.cashInHand.toLocaleString()}`} />
-                <StatRow label="Received via UPI" value={`₹ ${stats.cashInUpi.toLocaleString()}`} />
+                <StatRow label="Cash in Hand" value={`₹ ${stats.cashInHand.toLocaleString()}`} onPress={()=>
+                  navigation.navigate("CashPayments")
+                } />
+                <StatRow label="Received via UPI" value={`₹ ${stats.cashInUpi.toLocaleString()}`} onPress={()=>
+                  navigation.navigate("UPIPayments")
+                }/>
               </StatCard>
 
               <StatCard title="Division Breakdown">
                 {Object.entries(stats.byDivision).map(([div, data]) => (
-                  <StatRow key={div} label={`Division ${div} Paid`} value={`₹ ${data.paid.toLocaleString()}`} />
+                  <StatRow key={div} label={`Division ${div} Paid`} value={`₹ ${data.paid.toLocaleString()}`} onPress={()=>
+                    navigation.navigate("DivisionDetails",{divisionID:div})
+                  } />
                 ))}
               </StatCard>
             </>

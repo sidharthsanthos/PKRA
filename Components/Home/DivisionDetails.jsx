@@ -2,7 +2,7 @@ import { ActivityIndicator, FlatList, Platform, StatusBar, StyleSheet, Text, Vie
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../Config';
 
-const DivisionDetails = ({route}) => {
+const DivisionDetails = ({route,navigation}) => {
     const division=route.params.divisionID;
     const [members, setMembers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -114,20 +114,63 @@ const DivisionDetails = ({route}) => {
                 }
                 renderItem={({ item }) => {
                     const payment = item.House_Payment_Status?.[0];
-                    const Pending = 1500 - (payment?.PaidAmount || 0);
+                    const paidAmount = payment?.PaidAmount || 0;
+                    const pending = 1500 - paidAmount;
+                    const status = payment?.Status || "Pending";
                     
                     return (
-                        <View style={styles.card}>
-                            <Text style={styles.house}>{item.HouseNumber} - {item.Name}</Text>
-                            <Text style={{
-                                color: payment?.Status === 'Completed' ? 'green' : payment?.PaidAmount > 0 ? 'orange' : 'red',
-                                fontWeight: 'bold'
-                            }}>
-                                {payment?.Status || "No Record"}
-                            </Text>
-                            <Text>Paid: ₹{payment?.PaidAmount || 0}</Text>
-                            <Text>Pending: ₹{Pending <= 0 ? 0 : Pending}</Text>
-                        </View>
+                        <TouchableOpacity style={styles.card} onPress={()=>navigation.navigate('MemberDetails',{houseNo:item.HouseNumber})}>
+                            {/* Header Section */}
+                            <View style={styles.cardHeader}>
+                                <View style={styles.houseInfo}>
+                                    <Text style={styles.houseNumber}>House {item.HouseNumber}</Text>
+                                    <Text style={styles.memberName}>{item.Name}</Text>
+                                </View>
+                                <View style={[
+                                    styles.statusBadge, 
+                                    status === 'Completed' ? styles.statusCompleted : 
+                                    paidAmount > 0 ? styles.statusPartial : 
+                                    styles.statusPending
+                                ]}>
+                                    <Text style={styles.statusText}>
+                                        {status === 'Completed' ? '✓ Completed' : 
+                                         paidAmount > 0 ? 'Partial' : 
+                                         'Pending'}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {/* Divider */}
+                            <View style={styles.divider} />
+
+                            {/* Payment Details */}
+                            <View style={styles.paymentSection}>
+                                {/* <View style={styles.paymentRow}>
+                                    <Text style={styles.paymentLabel}>Total Amount</Text>
+                                    <Text style={styles.paymentValue}>₹1,500</Text>
+                                </View> */}
+                                <View style={styles.paymentRow}>
+                                    <Text style={styles.paymentLabel}>Paid</Text>
+                                    <Text style={[styles.paymentValue, styles.paidAmount]}>₹{paidAmount.toLocaleString()}</Text>
+                                </View>
+                                <View style={styles.paymentRow}>
+                                    <Text style={styles.paymentLabel}>Pending</Text>
+                                    <Text style={[styles.paymentValue, styles.pendingAmount]}>
+                                        ₹{pending <= 0 ? 0 : pending.toLocaleString()}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {/* Progress Bar */}
+                            {paidAmount > 0 && (
+                                <View style={styles.progressContainer}>
+                                    <View style={styles.progressBar}>
+                                        <View style={[styles.progressFill, { width: `${(paidAmount / 1500) * 100}%` }]} />
+                                    </View>
+                                    <Text style={styles.progressText}>{Math.round((paidAmount / 1500) * 100)}%</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
                     );
                 }}
             />
@@ -175,11 +218,109 @@ const styles = StyleSheet.create({
     fontWeight: 'bold'
   },
   card: {
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-    elevation: 2
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: '#f0f0f0'
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12
+  },
+  houseInfo: {
+    flex: 1
+  },
+  houseNumber: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4
+  },
+  memberName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333'
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginLeft: 8
+  },
+  statusCompleted: {
+    backgroundColor: '#d4edda'
+  },
+  statusPartial: {
+    backgroundColor: '#fff3cd'
+  },
+  statusPending: {
+    backgroundColor: '#f8d7da'
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333'
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+    marginVertical: 12
+  },
+  paymentSection: {
+    gap: 8
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  paymentLabel: {
+    fontSize: 14,
+    color: '#666'
+  },
+  paymentValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333'
+  },
+  paidAmount: {
+    color: '#28a745'
+  },
+  pendingAmount: {
+    color: '#dc3545'
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 8
+  },
+  progressBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+    overflow: 'hidden'
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#28a745',
+    borderRadius: 4
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    minWidth: 35,
+    textAlign: 'right'
   },
   house: {
     fontSize: 16,
