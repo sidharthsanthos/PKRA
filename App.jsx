@@ -9,6 +9,7 @@ import Search from './Components/Tabs/Search';
 import Payment from './Components/Tabs/Payment';
 import Settings from './Components/Tabs/Settings';
 import { supabase } from './Components/Config';
+import EMain from './Components/Expense/EMain';
 
 const Tab = createBottomTabNavigator();
 
@@ -88,6 +89,9 @@ const App = () => {
               case 'Settings':
                 iconName = focused ? 'settings' : 'settings-outline';
                 break;
+              case 'Expense':
+                iconName = focused ? 'wallet' : 'wallet-outline';
+                break;
               default:
                 iconName = 'ellipse-outline';
             }
@@ -101,6 +105,7 @@ const App = () => {
         <Tab.Screen name='Home' component={Home} listeners={protectedTabListener} />
         <Tab.Screen name='Search' component={Search} listeners={protectedTabListener} />
         <Tab.Screen name='Payment' component={Payment} listeners={protectedTabListener} />
+        <Tab.Screen name='Expense' component={EMain} listeners={protectedTabListener} />
         <Tab.Screen name='Settings' component={Settings} />
       </Tab.Navigator>
     </NavigationContainer>
