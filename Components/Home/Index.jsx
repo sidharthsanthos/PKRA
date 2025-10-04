@@ -34,6 +34,7 @@ const HomeContainer = ({navigation}) => {
   const [settings, setSettings] = useState([]);
   const [currentSetting, setCurrentSetting] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [id,setID]=useState('');
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -47,6 +48,9 @@ const HomeContainer = ({navigation}) => {
         const storedSettingId = await AsyncStorage.getItem('settingId');
         const initialSetting = storedSettingId ? data.find(s => s.id.toString() === storedSettingId) : data[0];
         setCurrentSetting(initialSetting || data[0]);
+        console.log(currentSetting);
+        
+        setID(currentSetting.id);
       }
     } catch (error) {
       console.error('Error Fetching Settings', error.message);
@@ -71,6 +75,16 @@ const HomeContainer = ({navigation}) => {
       .eq('AssociationId', settingId);
       
       if (paymentsError) throw paymentsError;
+
+      const {data:expenseData,error:expenseError}=await supabase
+         .from('Expenses')
+         .select('*')
+         .eq('Settings_ID',settingId)
+
+      if(expenseError) throw expenseError;
+
+      // console.log(expenseData);
+      
 
       const paymentsByHouse = payments.reduce((acc, p) => {
         acc[p.HouseNumber] = (acc[p.HouseNumber] || 0) + p.Amount_Paid;
@@ -97,6 +111,18 @@ const HomeContainer = ({navigation}) => {
 
       const totalPossible = members.length * annualFee;
       calculatedStats.amountPending = totalPossible - calculatedStats.amountReceived;
+
+      calculatedStats.totalExpense=expenseData.reduce((sum,e)=>sum+Number(e.Amount||0),0);
+
+      // console.log(calculatedStats);
+
+      const avastha=calculatedStats.amountReceived-calculatedStats.totalExpense;
+      if(avastha>0){
+        calculatedStats.situation='profit';
+      }else{
+        calculatedStats.situation='loss';
+      }
+      
 
       setStats(calculatedStats);
     } catch (error) {
@@ -152,6 +178,13 @@ const HomeContainer = ({navigation}) => {
             <Text style={styles.centerText}>No stats available for this cycle.</Text>
           ) : (
             <>
+              <StatCard title="Current Status">
+                <StatRow label="Total Money Received" value={`₹ ${stats.amountReceived} `}/>
+                <StatRow label="Total Expenses" value={`₹ ${stats.totalExpense}`} onPress={()=>
+                  navigation.navigate("ExpenseDetails",{id:id})
+                }/>
+                <StatRow label="Current Status" value={`₹ ${stats.amountReceived-stats.totalExpense} ${stats.situation}`}/>
+              </StatCard>
               <StatCard title="Financial Summary">
                 <StatRow label="Amount Received" value={`₹ ${stats.amountReceived.toLocaleString()}`} onPress={()=>
                   navigation.navigate("ReceivedDetails")

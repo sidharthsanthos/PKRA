@@ -9,6 +9,7 @@ import RecievedDetails from '../Home/RecievedDetails';
 import PendingDetails from '../Home/PendingDetails';
 import UPIPayments from '../Home/UPIPayments';
 import CashPayments from '../Home/CashPayments';
+import ExpenseList from '../Home/ExpenseList';
 
 const Stack=createStackNavigator();
 
@@ -24,6 +25,7 @@ const Home = () => {
         <Stack.Screen name='PendingDetails' component={PendingDetails}/>
         <Stack.Screen name='UPIPayments' component={UPIPayments}/>
         <Stack.Screen name='CashPayments' component={CashPayments}/>
+        <Stack.Screen name='ExpenseDetails' component={ExpenseList}/>
     </Stack.Navigator>
   )
 }
